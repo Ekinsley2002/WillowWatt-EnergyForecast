@@ -24,6 +24,9 @@
 
 This is what the structure should look like once everything is built:
 WillowWatt-EnergyForecast/
+
+
+```plaintext
 ├── Data/                 
 │   ├── historic/          
 │   └── live/              
@@ -42,7 +45,8 @@ WillowWatt-EnergyForecast/
 │
 ├── main.py              
 ├── requirements.txt      
-└── README.md          
+└── README.md
+
 
 Submitting something new:
 #  **Submitting Something New**
