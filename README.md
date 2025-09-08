@@ -21,10 +21,8 @@
   ```bash
   pip install -r requirements.txt
 
-
 This is what the structure should look like once everything is built:
 WillowWatt-EnergyForecast/
-
 
 ```plaintext
 ├── Data/                 
@@ -48,8 +46,6 @@ WillowWatt-EnergyForecast/
 └── README.md
 ```
 
-
-Submitting something new:
 #  **Submitting Something New**
 
 If you would like to fix an issue or make a system better, please:
