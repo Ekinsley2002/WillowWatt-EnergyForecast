@@ -138,6 +138,21 @@ predicted_date = future_df.iloc[max_prediction_idx]['Time']
 day_name = predicted_date.strftime('%A')
 time_period = "AM" if predicted_date.hour < 12 else "PM"
 
+total_days_predicted = len(future_df)
+
+print('--- Prediction Summary ---\n')
 print(f'Highest predicted peak: {max_prediction_value:.2f} MW')
 print(f'Predicted for: {day_name} {time_period} ({predicted_date})')
 print(f'This is data point {max_prediction_idx} in the next week')
+print('\n--------------------------')
+
+# User I/O for further data
+print(f'\nWould you like to see the full {total_days_predicted} day prediction? (y/n) : ', end='')
+user_input = input().strip().lower()
+if user_input == 'y':
+    for idx, (time, pred) in enumerate(zip(future_df['Time'], future_predictions)):
+        day_name = time.strftime('%A')
+        time_period = "AM" if time.hour < 12 else "PM"
+        print(f'Day {idx+1}: {day_name} {time_period} ({time}) - Predicted Peak: {pred:.2f} MW')
+else:
+    print('Exiting without showing full prediction.')
