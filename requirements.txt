@@ -4,3 +4,4 @@ scikit-learn
 skl2onnx
 onnxruntime
 numpy
+openpyxl
