@@ -83,7 +83,6 @@ df['prev_day_avg'] = df['Average'].shift(2)  # Since you have 12-hour intervals
 df['prev_day_max'] = df['Maximum'].shift(2)
 df['prev_day_min'] = df['Minimum'].shift(2)
 
-
 # Define features (what the model will look for)
 feature_columns = ['hour', 'day_of_week', 'month', 'day_of_year', 
                    'prev_day_avg', 'prev_day_max', 'prev_day_min']
