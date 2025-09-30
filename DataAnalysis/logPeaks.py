@@ -65,7 +65,7 @@ import onnxruntime as rt
 import numpy as np
 
 # Pull data
-df = pd.read_csv('Data/09-06-2024 -- 09-06-2025.csv')
+df = pd.read_csv('../Data/09-06-2024 -- 09-06-2025.csv')
 
 df['Time'] = pd.to_datetime(df['Time'].str.strip(), format='%m/%d/%Y %I:%M:%S %p')
 

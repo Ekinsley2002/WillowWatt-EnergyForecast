@@ -1,7 +1,9 @@
 # The purpose of this script is to find the datetime interval (Summer is suspected to be the cause).
 import pandas as pd
 
-# Start of implementation
+"""
+
+"""
 
 # Pull data
 df = pd.read_csv('../Data/09-06-2024 -- 09-06-2025.csv')
