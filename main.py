@@ -60,9 +60,6 @@ import onnxruntime as rt
     # To quickly handle math operations needed for model evaluation
 import numpy as np
 
-
-# Start of implementation
-
 # Pull data
 df = pd.read_csv('Data/09-06-2024 -- 09-06-2025.csv')
 
