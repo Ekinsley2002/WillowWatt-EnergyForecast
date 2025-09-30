@@ -152,3 +152,27 @@ if user_input == 'y':
         print(f'Day {idx+1}: {day_name} {time_period} ({time}) - Predicted Peak: {pred:.2f} MW')
 else:
     print('Exiting without showing full prediction.')
+
+# START OF LOGGING
+from pathlib import Path
+# Log single highest peak prediction
+def log_single_day_peak():
+    p = Path('Logs/single_day_predictions.csv')
+    p.parent.mkdir(parents=True, exist_ok=True)
+
+    with open('Logs/single_day_predictions.csv', 'a') as log_file:
+        log_file.write(f'{datetime.datetime.now()},{max_prediction_value:.2f},{day_name},{time_period},{predicted_date}\n')
+
+# Log full prediction data
+def log_full_prediction():
+    p = Path('Logs/full_predictions.csv')
+    p.parent.mkdir(parents=True, exist_ok=True)
+
+    with open('Logs/full_predictions.csv', 'a') as log_file:
+        log_file.write(f'Log Date: {datetime.datetime.now()}\n')
+        log_file.write('Day,Date,Predicted Peak (MW)\n')
+        for idx, (time, pred) in enumerate(zip(future_df['Time'], future_predictions)):
+            day_name = time.strftime('%A')
+            time_period = "AM" if time.hour < 12 else "PM"
+            log_file.write(f'{idx+1},{day_name} {time_period} ({time}),{pred:.2f}\n')
+        log_file.write('\n')
