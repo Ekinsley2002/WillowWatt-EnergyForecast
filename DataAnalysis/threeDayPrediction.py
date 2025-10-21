@@ -1,150 +1,245 @@
-# The purpose of this file is to create a model using three different buildings 28, 36, 54
+# Energy Prediction Models
+# Creates 5 clean models that take one parameter and output 24-hour predictions
+# 
+# Input Parameters:
+# - CurrentLoad: Current energy load in kWh (float)
+# 
+# Output:
+# - 24 one-hour predictions for the next 24 hours
+# 
+# Models Created:
+# 1. Building 28 model
+# 2. Building 36 model  
+# 3. Building 54 model
+# 4. WillowEnergyData model (09-06-2024 -- 09-06-2025.csv)
+# 5. Combined model (all data sources)
 
-# Input for creation: 3 seperate pages (one per building) of datetime (MM/DD/YY) and energy data (kWh)
-
-# Process:
-# Data format
-#   - create data frames for each building
-#   - format the datetime to (MM/DD/YY)
-#   - define building names in relation to datafames
-#   - pre process
-# Visualize Time Series
-#   - create plot of the average energy use across the three buildings
-#   - create lag features ofr simple time series forecasting
-# Create and Test model
-#   - split the data into training and testing sections
-#   - train RFR model
-# Get predictions
-#   - use the model (should be designed to only spit out three days) to get predictions
-#   - show testing statistics (log to file)
-# Convert to ONNYX
-#   - package data into ONNYX
-#   - store package in models file
-
-# Where to go from here
-# - Luke will use this three day forecaster for alert testing
-# - Ayla will use this to compare with the next three days of API
-# - OP Ravi will directly use this to plot the next three day predictions
-
-# Input of Model:
-# - The starting day to predict the next three (MM/DD/YY)
-
-# Import pandas for loading, manipulating and analyzing AEP_hourly excel
-# Why I use pandas:
-    # Load energy dataset
-    # Set timestamps as an index
-    # resample and clean the time-series
 import pandas as pd
-
-# Import matplotlib for data visualization
-# Why I use matplotlib:
-    # Plot actual vs predicted energy usage
-    # Visualize patterns in the energy data
-    # Understanding how accurate my forcasting is
-import matplotlib.pyplot as plt
-
-# Import train_test_split which splits my data into training and testing sets
-# Why I use train_test_split
-    # I split the data up so that the model can use some of the data to train->
-    # ->and other parts of the data for testing accuracy
-from sklearn.model_selection import train_test_split
-
-# Import randomForestRegressor which is a machine learning model that uses multiple->
-# ->Decision trees to make predictions
-# Why I use randomForestRegressor
-    # To forcast the next hour of energuy usage based on the previous hour
-    # This kind of machine learning model works well with numbers and is robust
+import numpy as np
 from sklearn.ensemble import RandomForestRegressor
-
-# Import mean_squared_error which is a standard math algorithm that tests for "Loss"
-# Why I use mean_squared_error:
-    # Measuring loss is important in AI models to know how wrong the prediction is
-from sklearn.metrics import mean_squared_error
-
-# Import convert_sklearn to convert the trained model into ONNX format
-# Why I use convert_sklearn:
-    # I need to export to ONNX format (recommended by client) to have a cross ->
-    #->platform compatable model so that it has more multipurpose.
+from sklearn.model_selection import train_test_split
 from skl2onnx import convert_sklearn
-
-# Import FloatTensorType to define the input type for the ONNX conversion
-# Why I use FloatTensorType:
-    # ONNX needs to know the input shape (how many features) to build the graph correctly
 from skl2onnx.common.data_types import FloatTensorType
 
-# Import onnxruntime which is an runtime engine to load and run ONNX models
-# Why I use onnxruntimeL
-    # Us ethe converted ONNX model and run fast predictions outside of scikit-learn
-import onnxruntime as rt
+def create_features(df):
+    """Create simple lag feature for prediction (like reference code)"""
+    df['prev_hour'] = df['Energy_kWh'].shift(1)
+    df.dropna(inplace=True)
+    return df
 
-# Import numpy which is a core library for numerical operations in python
-# Why I use Numpy:
-    # To convert test data into a format (float32 arrays) that ONNX understands
-    # To quickly handle math operations needed for model evaluation
-import numpy as np
-
-# Data format
-try:
-    building_28 = pd.read_excel("../Data/Historic-15MIN.xlsx", sheet_name="BLDG-28")
-
-    building_54 = pd.read_excel("../Data/Historic-15MIN.xlsx", sheet_name="BLDG-54")
-
-    building_36 = pd.read_excel("../Data/Historic-15MIN.xlsx", sheet_name="BLDG-36")
-
-    buildings = [building_28, building_54, building_36]
-
-except:
-    print("Error finding data..") 
-
-# GLOBAL
-
-building_names = ['BLDG_28', 'BLDG_54', 'BLDG_36']
-
-building_28['Time'] = pd.to_datetime(building_28['Date'])
-
-building_54['Time'] = pd.to_datetime(building_54['Date'])
-
-building_36['Time'] = pd.to_datetime(building_36['Date'])
-
-# proprocess
-building_54 = building_54.dropna(subset=['Time', 'kWh']).reset_index(drop=True)
-
-# Loop through each building and filter out values >= 1000 AND negative values
-for i, building in enumerate(buildings):
-    # Check how many rows before filtering
-    original_count = len(building)
+def prepare_data(source_data, source_name):
+    """Prepare and clean data from any source"""
+    print(f"\nProcessing {source_name}...")
     
-    # Find outliers (for logging/inspection)
-    outliers_high = building[building['kWh'] >= 1000]
-    outliers_negative = building[building['kWh'] < 0]
-    outlier_count = len(outliers_high) + len(outliers_negative)
+    # Convert to datetime and set as index
+    if 'Date' in source_data.columns:
+        source_data['Datetime'] = pd.to_datetime(source_data['Date'])
+        source_data = source_data.set_index('Datetime')
+    elif 'Time' in source_data.columns:
+        source_data['Datetime'] = pd.to_datetime(source_data['Time'])
+        source_data = source_data.set_index('Datetime')
     
-    # Filter: keep only rows where kWh is between 0 and 1000 (exclusive)
-    buildings[i] = building[(building['kWh'] >= 0) & (building['kWh'] < 1000)].reset_index(drop=True)
+    # Rename energy column if needed
+    if 'kWh' in source_data.columns:
+        source_data = source_data.rename(columns={'kWh': 'Energy_kWh'})
+    elif 'Average' in source_data.columns:
+        source_data = source_data.rename(columns={'Average': 'Energy_kWh'})
     
-    # Print summary
-    print(f"{building_names[i]}: Removed {outlier_count} outliers (kept {len(buildings[i])}/{original_count} rows)")
+    # Filter outliers based on data characteristics
+    original_count = len(source_data)
     
-    if len(outliers_high) > 0:
-        print(f"  High values removed: {len(outliers_high)} (max: {outliers_high['kWh'].max()})")
-    if len(outliers_negative) > 0:
-        print(f"  Negative values removed: {len(outliers_negative)} (min: {outliers_negative['kWh'].min()})")
+    # Check data range to determine appropriate filtering
+    max_val = source_data['Energy_kWh'].max()
+    min_val = source_data['Energy_kWh'].min()
+    
+    if max_val > 10000:  # Likely kW data (larger values)
+        source_data = source_data[(source_data['Energy_kWh'] >= 0) & (source_data['Energy_kWh'] < 100000)]
+    else:  # Likely kWh data (smaller values)
+        source_data = source_data[(source_data['Energy_kWh'] >= 0) & (source_data['Energy_kWh'] < 1000)]
+    
+    filtered_count = len(source_data)
+    
+    print(f"  Removed {original_count - filtered_count} outliers ({filtered_count}/{original_count} rows kept)")
+    
+    # Resample to hourly data
+    df = source_data[['Energy_kWh']].resample('h').mean().ffill()
+    
+    # Create features
+    df = create_features(df)
+    
+    print(f"  Final data shape: {df.shape}")
+    print(f"  Date range: {df.index.min()} to {df.index.max()}")
+    print(f"  Energy range: {df['Energy_kWh'].min():.2f} to {df['Energy_kWh'].max():.2f} kWh")
+    
+    return df
 
-# Update individual variables after filtering
-building_28 = buildings[0]
-building_54 = buildings[1]
-building_36 = buildings[2]
+def train_model(df, model_name):
+    """Train Random Forest model on prepared data (like reference code)"""
+    print(f"\nTraining {model_name}...")
+    
+    # Prepare features and target (only prev_hour like reference code)
+    X = df[['prev_hour']]
+    y = df['Energy_kWh']
+    
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+    
+    # Train model (same parameters as reference code)
+    model = RandomForestRegressor(n_estimators=50, max_depth=10, n_jobs=-1, random_state=42)
+    model.fit(X_train, y_train)
+    
+    # Test model
+    y_pred = model.predict(X_test)
+    r2_score = model.score(X_test, y_test)
+    
+    print(f"  R² Score: {r2_score:.4f}")
+    print(f"  MSE: {np.mean((y_test - y_pred)**2):.4f}")
+    
+    return model, X.shape[1]
 
-# plot this all this data for all three buildings, then save the figures.
-for building, name in zip(buildings, building_names):
-    plt.figure(figsize=(12, 6))
-    plt.plot(building['Time'], building['kWh'])  # Specify which columns to plot
-    plt.title(f'Consumption of Energy Over Time: {name}')
-    plt.xlabel('Date')
-    plt.ylabel('kWh energy consumption')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.savefig(f'../DataAnalysis/Figures/{name}_TxkWh.png')
-    plt.close()
+def save_onnx_model(model, input_features, model_name):
+    """Convert and save model to ONNX format"""
+    print(f"  Converting {model_name} to ONNX...")
+    
+    # Define input type for ONNX conversion
+    initial_type = [('float_input', FloatTensorType([None, input_features]))]
+    
+    # Convert to ONNX
+    onnx_model = convert_sklearn(model, initial_types=initial_type)
+    
+    # Save ONNX model
+    model_path = f"../Models/{model_name}.onnx"
+    with open(model_path, "wb") as f:
+        f.write(onnx_model.SerializeToString())
+    
+    print(f"  Saved: {model_path}")
 
+def predict_24_hours(model, current_load):
+    """
+    Predict next 24 hours using only current load input (like reference code)
+    
+    Args:
+        model: Trained RandomForestRegressor model
+        current_load: Current energy load in kWh (float)
+    
+    Returns:
+        List of 24 predictions for next 24 hours
+    """
+    predictions = []
+    next_hour_load = current_load
+    
+    for hour in range(24):
+        # Predict next hour using current load (use DataFrame format to avoid warnings)
+        input_df = pd.DataFrame({'prev_hour': [next_hour_load]})
+        prediction = model.predict(input_df)[0]
+        predictions.append(prediction)
+        
+        # Use prediction as input for next hour
+        next_hour_load = prediction
+    
+    return predictions
 
+# Load data from Excel file (Buildings 28, 36, 54)
+print("Loading building data from Excel...")
+building_28 = pd.read_excel("../Data/Historic-15MIN.xlsx", sheet_name="BLDG-28")
+building_36 = pd.read_excel("../Data/Historic-15MIN.xlsx", sheet_name="BLDG-36")
+building_54 = pd.read_excel("../Data/Historic-15MIN.xlsx", sheet_name="BLDG-54")
+
+# Load CSV data
+print("Loading CSV data...")
+csv_data = pd.read_csv("../Data/09-06-2024 -- 09-06-2025.csv")
+
+print("="*60)
+print("CREATING ENERGY PREDICTION MODELS")
+print("="*60)
+
+# Create and train individual building models
+models = {}
+
+# Building 28 model
+df_28 = prepare_data(building_28, "Building 28")
+model_28, features_28 = train_model(df_28, "Building 28 Model")
+save_onnx_model(model_28, features_28, "building_28_model")
+models['building_28'] = model_28
+
+# Building 36 model
+df_36 = prepare_data(building_36, "Building 36")
+model_36, features_36 = train_model(df_36, "Building 36 Model")
+save_onnx_model(model_36, features_36, "building_36_model")
+models['building_36'] = model_36
+
+# Building 54 model
+df_54 = prepare_data(building_54, "Building 54")
+model_54, features_54 = train_model(df_54, "Building 54 Model")
+save_onnx_model(model_54, features_54, "building_54_model")
+models['building_54'] = model_54
+
+# CSV data model
+df_csv = prepare_data(csv_data, "CSV Data")
+model_csv, features_csv = train_model(df_csv, "Willow Energy Data")
+save_onnx_model(model_csv, features_csv, "willow_energy_data")
+models['csv_data'] = model_csv
+
+# Combined model (all data sources)
+print(f"\nProcessing Combined Data...")
+combined_data = []
+
+# Add building data
+for building, name in zip([df_28, df_36, df_54], ['BLDG_28', 'BLDG_36', 'BLDG_54']):
+    building_copy = building.copy()
+    building_copy['Building'] = name
+    combined_data.append(building_copy)
+
+# Add CSV data
+csv_copy = df_csv.copy()
+csv_copy['Building'] = 'CSV_DATA'
+combined_data.append(csv_copy)
+
+# Combine all data
+df_combined = pd.concat(combined_data, ignore_index=False)
+df_combined = df_combined[['Energy_kWh']].resample('h').mean().ffill()
+df_combined = create_features(df_combined)
+
+print(f"  Combined data shape: {df_combined.shape}")
+print(f"  Date range: {df_combined.index.min()} to {df_combined.index.max()}")
+
+# Train combined model
+model_combined, features_combined = train_model(df_combined, "Combined Model")
+save_onnx_model(model_combined, features_combined, "combined_model")
+models['combined'] = model_combined
+
+print("\n" + "="*60)
+print("ALL MODELS CREATED SUCCESSFULLY!")
+print("="*60)
+
+print("\nCreated Models:")
+print("1. building_28_model.onnx - Uses Building 28 data only")
+print("2. building_36_model.onnx - Uses Building 36 data only") 
+print("3. building_54_model.onnx - Uses Building 54 data only")
+print("4. WillowEnergyData.onnx - Uses CSV data only")
+print("5. combined_model.onnx - Uses all data sources")
+
+print(f"\nEach model takes 1 input parameter:")
+print(f"- CurrentLoad: Current energy load in kWh (float)")
+print(f"\nEach model outputs 24 one-hour predictions for the next 24 hours")
+
+print(f"\nAll models saved to: ../Models/")
+
+# Example usage: Predict 24 hours using current load
+print("\n" + "="*60)
+print("EXAMPLE USAGE")
+print("="*60)
+
+# Example current load (in kWh)
+example_current_load = 150.5  # Example: 150.5 kWh current load
+
+print(f"\nExample: Predicting next 24 hours with current load = {example_current_load} kWh")
+print("\nUsing Building 28 Model:")
+building_28_predictions = predict_24_hours(model_28, example_current_load)
+for i, pred in enumerate(building_28_predictions):
+    print(f"  Hour {i+1:2d}: {pred:.2f} kWh")
+
+print(f"\nUsing Combined Model:")
+combined_predictions = predict_24_hours(model_combined, example_current_load)
+for i, pred in enumerate(combined_predictions):
+    print(f"  Hour {i+1:2d}: {pred:.2f} kWh")
