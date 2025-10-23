@@ -125,8 +125,11 @@ def predict_24_hours(model, current_load):
     Returns:
         List of 24 predictions for next 24 hours
     """
+    # Convert Willow's kW input to kWh
+    current_load_kwh = current_load / 12
+    
     predictions = []
-    next_hour_load = current_load
+    next_hour_load = current_load_kwh
     
     for hour in range(24):
         # Predict next hour using current load (use DataFrame format to avoid warnings)
@@ -243,3 +246,14 @@ print(f"\nUsing Combined Model:")
 combined_predictions = predict_24_hours(model_combined, example_current_load)
 for i, pred in enumerate(combined_predictions):
     print(f"  Hour {i+1:2d}: {pred:.2f} kWh")
+
+# Example current load in kW (simulate Willow input)
+example_current_load_kw = 150.5  # Example: 150.5 kW
+
+print(f"\nExample: Predicting next 24 hours with current load = {example_current_load_kw} kW")
+
+print("\nUsing North Campus Model:")
+north_predictions_kw = predict_24_hours(model_csv, example_current_load_kw)
+
+for i, pred in enumerate(north_predictions_kw):
+    print(f"  Hour {i+1:2d}: {pred:.2f} kW")
