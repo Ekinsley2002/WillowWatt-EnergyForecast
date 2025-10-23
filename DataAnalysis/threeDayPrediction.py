@@ -183,8 +183,6 @@ model_csv, features_csv = train_model(df_csv, "Willow Energy Data")
 save_onnx_model(model_csv, features_csv, "willow_energy_data")
 models['csv_data'] = model_csv
 
-print(df_csv.head())
-
 # Combined model (all data sources)
 print(f"\nProcessing Combined Data...")
 combined_data = []
