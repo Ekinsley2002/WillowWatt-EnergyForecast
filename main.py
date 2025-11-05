@@ -100,7 +100,7 @@ model.fit(X_train, y_train)
 
 import datetime
 
-start_date = datetime.datetime(2025, 9, 15, 5, 0, 0)
+start_date = datetime.datetime.now().replace(minute=0, second=0, microsecond=0)
 future_dates = []
 
 for i in range(14):
@@ -162,6 +162,7 @@ def log_single_day_peak():
 
     with open('Logs/single_day_predictions.csv', 'a') as log_file:
         log_file.write(f'{datetime.datetime.now()},{max_prediction_value:.2f},{day_name},{time_period},{predicted_date}\n')
+log_single_day_peak()
 
 # Log full prediction data
 def log_full_prediction():
@@ -176,3 +177,60 @@ def log_full_prediction():
             time_period = "AM" if time.hour < 12 else "PM"
             log_file.write(f'{idx+1},{day_name} {time_period} ({time}),{pred:.2f}\n')
         log_file.write('\n')
+
+log_full_prediction()
+
+# Add billing period functionality
+month = datetime.datetime.now().month
+year = datetime.datetime.now().year
+
+# Use 1st of current month to 1st of next month
+# Compare highest peak found this month to all data in current month
+start_of_month = datetime.datetime(year, month, 1)
+start_of_month = pd.Timestamp(start_of_month)
+# Read single day logs
+try:
+    # Read logs
+    logs_df = pd.read_csv(
+        'Logs/single_day_predictions.csv',
+        header=None,
+        names=['LogDate','PredictedPeak','DayName','TimePeriod','PredictedDate'],
+        parse_dates=['LogDate','PredictedDate']
+    )
+
+    newest_entry = logs_df.iloc[-1]
+    predicted_date = newest_entry['PredictedDate']
+
+    start_ts = pd.Timestamp(predicted_date.normalize().replace(day=1))
+    end_ts = start_ts + pd.DateOffset(months=1)
+
+    pred_ns = logs_df['PredictedDate'].values.astype('datetime64[ns]').astype('int64')
+    start_ns = np.int64(start_ts.value)
+    end_ns = np.int64(end_ts.value)
+
+    mask = (pred_ns >= start_ns) & (pred_ns < end_ns)
+    monthly_logs = logs_df[mask]
+
+    willow_df = pd.read_csv('Data/WillowData - Weekly/Nov 1--Nov 5-2025.csv', skipinitialspace=True)
+        
+    for col in ['Average', 'Minimum', 'Maximum']:
+        willow_df[col] = pd.to_numeric(willow_df[col], errors='coerce')
+
+    # compute the max in MW
+    willow_max = willow_df['Maximum'].max() / 1000
+
+    if not monthly_logs.empty:
+        print(f'\nWillow reported maximum this week: {willow_max:.2f} MW')
+        max_prediction_value = float(pd.to_numeric(monthly_logs['PredictedPeak'], errors='coerce').max())
+        print(f'This week\'s highest predicted peak: {max_prediction_value:.2f} MW')
+
+        if max_prediction_value > willow_max:
+            print("This week's highest predicted peak exceeds the Willow reported maximum!")
+            print("Refer to Prediction Summary above for details.")
+        else:
+            print("This week's highest predicted peak does not exceed the Willow reported maximum.")
+    else:
+        print('\nNo predictions logged for this month yet.')
+
+except Exception as e:
+    print(f'\nError reading monthly logs: {e}')
