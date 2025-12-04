@@ -8,8 +8,8 @@ from zoneinfo import ZoneInfo
 
 class Config:
     # OAuth2 Configuration - Fill these in with your credentials
-    CLIENT_ID = '53c390d4-c92d-4d65-8505-7168af28abc8'  # Application (client) ID
-    CLIENT_SECRET = 'hzN8Q~B4IcyCWLJg1ObICDbg5Rm3HZO.C~vmgbHT'  # Client secret
+    CLIENT_ID = ''  # Application (client) ID
+    CLIENT_SECRET = ''  # Client secret
     
     # Willow API Base URL (from Swagger UI)
     BASE_URL = 'https://northernarizonauniversity.app.willowinc.com/api/v3'
