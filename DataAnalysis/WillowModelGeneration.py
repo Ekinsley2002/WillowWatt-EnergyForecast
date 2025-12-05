@@ -21,6 +21,7 @@ dataframes = []
 for file in all_files:
     print(f"Loading: {os.path.basename(file)}")
     df = pd.read_csv(file)
+<<<<<<< HEAD
     
     df["Time"] = pd.to_datetime(df["Time"], format="mixed")
     
@@ -28,6 +29,15 @@ for file in all_files:
     
     df = df[["Time", "Energy_kW"]].set_index("Time")
     
+=======
+
+    df["Time"] = pd.to_datetime(df["Time"], format="mixed")
+
+    df["Energy_kW"] = df["Average"] / 1000
+
+    df = df[["Time", "Energy_kW"]].set_index("Time")
+
+>>>>>>> f25b3f86ef93e887646c6fbab3e9cb38d4e5bd80
     dataframes.append(df)
 
 combined_df = pd.concat(dataframes, ignore_index=False)
@@ -73,33 +83,58 @@ def train_and_export(df, lag_column_name, model_path, log_prefix):
         X, y, test_size=0.2, shuffle=False
     )
 
+<<<<<<< HEAD
 model = RandomForestRegressor(n_estimators=50, max_depth=10, n_jobs=-1)
 model.fit(X_train, y_train)
 
 y_pred = model.predict(X_test)
+=======
+    model = RandomForestRegressor(n_estimators=50, max_depth=10, n_jobs=-1)
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+>>>>>>> f25b3f86ef93e887646c6fbab3e9cb38d4e5bd80
     print(f"{log_prefix} model MSE: {mean_squared_error(y_test, y_pred):.4f}")
 
     # Update ONNX input type to match 8 features (6 lags + hour + day)
     initial_type = [("float_input", FloatTensorType([None, 8]))]
+<<<<<<< HEAD
 onnx_model = convert_sklearn(model, initial_types=initial_type)
 
 with open(model_path, "wb") as f:
     f.write(onnx_model.SerializeToString())
+=======
+    onnx_model = convert_sklearn(model, initial_types=initial_type)
+
+    with open(model_path, "wb") as f:
+        f.write(onnx_model.SerializeToString())
+>>>>>>> f25b3f86ef93e887646c6fbab3e9cb38d4e5bd80
 
     print(f"{log_prefix} model converted to ONNX: {model_path}")
 
     session = rt.InferenceSession(model_path)
     input_name = session.get_inputs()[0].name
     label_name = session.get_outputs()[0].name
+<<<<<<< HEAD
 test_input = X_test.to_numpy().astype(np.float32)
+=======
+    test_input = X_test.to_numpy().astype(np.float32)
+>>>>>>> f25b3f86ef93e887646c6fbab3e9cb38d4e5bd80
     onnx_pred = session.run([label_name], {input_name: test_input})[0]
 
     print(f"{log_prefix} ONNX Model MSE: {mean_squared_error(y_test, onnx_pred):.4f}")
 
+<<<<<<< HEAD
 y_test_series = y_test.copy()
 y_test_series.index = X_test.index
 
 plt.figure(figsize=(15, 5))
+=======
+    y_test_series = y_test.copy()
+    y_test_series.index = X_test.index
+
+    plt.figure(figsize=(15, 5))
+>>>>>>> f25b3f86ef93e887646c6fbab3e9cb38d4e5bd80
     plt.plot(y_test_series.index, y_test_series, label="Actual", color="blue")
     plt.plot(y_test_series.index, y_pred, label="Predicted (Sklearn)", color="orange")
     plt.plot(
@@ -113,6 +148,7 @@ plt.figure(figsize=(15, 5))
     plt.title(f"Actual vs Predicted Energy Usage ({log_prefix})")
     plt.xlabel("Datetime")
     plt.ylabel("Kilowatts (kW)")
+<<<<<<< HEAD
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
@@ -120,15 +156,30 @@ plt.tight_layout()
     print(f"Saved: ../Logs/forecast_comparison_plot_{log_prefix}.png")
 
 plt.figure(figsize=(15, 5))
+=======
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(f"../Logs/forecast_comparison_plot_{log_prefix}.png")
+    print(f"Saved: ../Logs/forecast_comparison_plot_{log_prefix}.png")
+
+    plt.figure(figsize=(15, 5))
+>>>>>>> f25b3f86ef93e887646c6fbab3e9cb38d4e5bd80
     plt.plot(y_test_series.index, y_test_series, label="Actual", color="blue")
     plt.plot(y_test_series.index, y_pred, label="Predicted (Sklearn)", color="orange")
 
     plt.title(f"Actual vs Predicted Energy Usage (Sklearn Only - {log_prefix})")
     plt.xlabel("Datetime")
     plt.ylabel("Kilowatts (kW)")
+<<<<<<< HEAD
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
+=======
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+>>>>>>> f25b3f86ef93e887646c6fbab3e9cb38d4e5bd80
     plt.savefig(f"../Logs/forecast_comparison_plot_sklearn_only_{log_prefix}.png")
     print(f"Saved: ../Logs/forecast_comparison_plot_sklearn_only_{log_prefix}.png")
 
